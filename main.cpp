@@ -340,7 +340,7 @@ struct my_tuple
         // 20250602 : 21:00
         // WHY??? WHY????
         // WHY????????????
-        // 20250602 : 21:30: C++ template:  Dependent-names: Lookup rules
+        // 20250602 : 21:30: see C++ template:  Dependent-names
         return this->elemgr.template _get_ptr<idx>();
     }
 };
