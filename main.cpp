@@ -20,13 +20,9 @@ template <class FirstT, class... Tail>
 constexpr decltype(auto) at_variadic_template_metainfo(unsigned int indx, auto call_back_if_get, FirstT *ignored_ft,
                                                        Tail *...ignored_tailt)
 {
-
     if (indx > sizeof...(Tail))
     {
-        if consteval
-        {
-            static_assert(false,"idx out of range!");
-        }
+
         throw std::range_error("indx out of range");
     }
     if (indx == 0)
@@ -43,10 +39,6 @@ constexpr decltype(auto) at_variadic_template_metainfo(unsigned int indx, auto c
 
     if (indx > 0)
     {
-        if consteval
-        {
-            static_assert(false,"idx out of range!");
-        }
         throw std::range_error("indx out of range");
     }
     return call_back_if_get(ignored_ft);
@@ -107,12 +99,12 @@ constexpr decltype(auto) at_variadic_template(unsigned int idx, auto call_back_i
  *
  *
  *    Terrible implementation of std::tuple, just stores a copy of ElemTs,and assign them
- *    No lrreference
+ *    No lr value reference
  */
 template <class... ElemT> // ElemT == T  UTypes == U
 struct my_tuple
 {
-public:
+  public:
     static_assert((std::is_trivially_destructible_v<std::remove_cvref_t<ElemT>> && ...));
     static_assert(((std::is_copy_assignable_v<std::remove_cvref_t<ElemT>> |
                     std::is_move_assignable_v<std::remove_cvref_t<ElemT>>) &&
@@ -122,7 +114,7 @@ public:
     // 执意去抱着孤单 破灭无力一起失落!
     // 我跟你一起冒险 不离不弃一起说过!
     // 你无情岁月到来为何总是把你错过!
-    //todo : custom allocator support and std::polymorphic_allocator specialization
+    // todo : custom allocator support and std::polymorphic_allocator specialization
 
     /**
      *
@@ -161,7 +153,7 @@ public:
                 at_variadic_template_metainfo<__ElemT...>(
                     idx,
                     // I love lambda
-                    // I have to deduce explicitly type,due to initialize:
+                    // I have to deduce type explicitly,due to initialization:
                     [&]<class FirstT>(FirstT *) mutable {
                         _base_ptr = std::allocator_traits<__allocator>::allocate(this->allocator, _count);
                         // No support for std::remove_cvref_t<FirstT>(); so, I have to deduce type explicitly to make
@@ -194,7 +186,7 @@ public:
                     idx,
                     [&]<class FirstT>(FirstT &&first) mutable {
 #if __cplusplus >= 202302L
-                        // THIS STATE IS FOR ALLOCATOR, CONFLICT WITH CONSTRUCT INITIALIZE BEGIN
+                        // THIS STATEMENT IS FOR ALLOCATOR, CONFLICT WITH CONSTRUCT INITIALIZE BEGIN
                         auto [_base_ptr, _count] = std::allocator_traits<__allocator>::allocate_at_least(
                             this->allocator,
                             // Why didn't use remove_cvref_t(__ElemT)... type deducing in here? let the compiler deduce
@@ -210,7 +202,8 @@ public:
                             idx,
                             [&]<class FirstT>(FirstT &&first) constexpr { return sizeof(std::remove_cvref_t<FirstT>); },
                             std::forward<__ElemT>(__elements)...);
-                        decltype(auto) _base_ptr = std::allocator_traits<__allocator>::allocate(this->allocator, _count);
+                        decltype(auto) _base_ptr =
+                            std::allocator_traits<__allocator>::allocate(this->allocator, _count);
 #endif
 
                         std::println("[DEBUG]: elements_manager: allocated bytes: {}", _count);
@@ -230,13 +223,13 @@ public:
                         // else:else:else: directly return, no assignment
                         this->original_elements.emplace_back(std::make_pair(_base_ptr, _count));
                         return;
-                        // THIS STATE IS FOR ALLOCATOR, CONFLICT WITH CONSTRUCT INITIALIZE END
+                        // THIS STATEMENT IS FOR ALLOCATOR, CONFLICT WITH CONSTRUCT INITIALIZE END
                     },
                     std::forward<__ElemT>(__elements)...);
             }
         }
 
-        template <size_t idx> decltype(auto) _get_ptr()
+        template <size_t idx = 0> decltype(auto) _get_ptr()
         {
             return this->is_init
                        ? std::make_pair(this->original_elements.at(idx).first, this->original_elements.at(idx).second)
@@ -274,7 +267,7 @@ public:
     {
         // This overload participates in overload resolution only if std::is_default_constructible<Ti>::value is true
         // for all i.
-        // to guarantee that the __ElemT(Ti) is default_constructible
+        // Guarantee that the __ElemT(Ti) is default_constructible
         // As the same as default-constructor in elements_manager
         static_assert(sizeof...(ElemT) != 0);
         static_assert(((std::is_default_constructible_v<std::remove_cvref_t<ElemT>>) && ...));
@@ -342,9 +335,13 @@ public:
      */
     ~my_tuple() = default;
 
-    template <size_t idx> decltype(auto) _get_ptr()
+    template <size_t idx = 0> decltype(auto) get_ptr()
     {
-        return this->elemgr._get_ptr<idx>();
+        // 20250602 : 21:00
+        // WHY??? WHY????
+        // WHY????????????
+        // 20250602 : 21:30: C++ template:  Dependent-names: Lookup rules
+        return this->elemgr.template _get_ptr<idx>();
     }
 };
 
